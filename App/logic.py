@@ -28,9 +28,39 @@
 #  Importaciones
 # ___________________________________________________
 
+from DataStructures.Graph import edge as ed
+from DataStructures.Graph import vertex as vt
+from DataStructures.Graph import diagraph as G
+from DataStructures.Graph import bfs as bfs
+from DataStructures.Graph import dfs as dfs
+from DataStructures.Graph import prim as prim
+from DataStructures.Graph import dijsktra as dk
+
+
+
+
+
+from DataStructures.List import array_list as al
+from DataStructures.List import list_iterator as li
+from DataStructures.List import list_node as ld
 from DataStructures.List import single_linked_list as lt
+
+from DataStructures.Map import map_entry as me
+from DataStructures.Map import map_funtions as mf
 from DataStructures.Map import map_linear_probing as m
-from DataStructures.Graph import digraph as G
+from DataStructures.Map import map_separate_chaining as msc
+
+from DataStructures.Priority_queue import index_pq_entry as ipe
+from DataStructures.Priority_queue import priority_queue as pq
+
+from DataStructures.Queue import queue as q
+
+from DataStructures.Stack import stack as s
+
+from DataStructures.Tree import bst_node as bn
+from DataStructures.Tree import rbt_node as rb
+from DataStructures.Tree import red_black_tree as rbt
+
 
 import csv
 import time
@@ -125,8 +155,8 @@ def set_station(analyzer, station):
         station = str(station)
         vertex = G.get_vertex(analyzer['connections'], station)
         if vertex is not None:
-            # TODO: Llame a la ejecucion de Dijkstra desde la estacion
-            # base para calcular los caminos de costo minimo
+            dijkstra_search = dk.dijkstra(analyzer['connections'], station)
+            analyzer['dijkstra_search'] = dijkstra_search
             return True
         else:
             return False
