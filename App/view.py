@@ -27,74 +27,172 @@
 
 import sys
 import threading
+
 from App import logic
 
-"""
-La vista se encarga de la interacción con el usuario.
-Presenta el menu de opciones  y  por cada seleccion
-hace la solicitud al controlador para ejecutar la
-operación seleccionada.
-"""
-
-# ___________________________________________________
-#  Variables
-# ___________________________________________________
-
-
-servicefile = 'bus_routes_14000.csv'
-initialStation = None
-
-# ___________________________________________________
-#  Menu principal
-# ___________________________________________________
+# Nombre del archivo CSV en /Data
+SERVICE_FILE = 'bus_routes_14000.csv'
 
 
 def print_menu():
-    print("\n")
-    print("*******************************************")
+    print("\n" + "*" * 50)
     print("Bienvenido")
     print("1- Inicializar Analizador")
-    print("2- Cargar información de buses de singapur")
+    print("2- Cargar información de buses de Singapur")
+    print("3- Calcular componentes conectados")
+    print("4- Establecer estación base")
+    print("5- Hay camino entre estación base y estación")
+    print("6- Ruta de costo mínimo desde la estación base y estación")
+    print("7- Estación que sirve a más rutas")
+    print("8- Existe un camino de búsqueda entre la estación base y estación destino")
+    print("9- Ruta de búsqueda entre la estación base y estación destino")
     print("0- Salir")
-    print("*******************************************")
+    print("*" * 50)
 
 
-def option_two(cont):
-    print("\nCargando información de transporte de singapur ....")
-    logic.load_services(cont, servicefile)
-    numedges = logic.total_connections(cont)
-    numvertex = logic.total_stops(cont)
-    print('Numero de vertices: ' + str(numvertex))
-    print('Numero de arcos: ' + str(numedges))
-    print('El limite de recursion actual: ' + str(sys.getrecursionlimit()))
+def option_one():
+    print("\nInicializando analizador...")
+    analyzer = logic.init()
+    print("Analizador inicializado.")
+    return analyzer
 
 
-"""
-Menu principal
-"""
+def option_two(analyzer):
+    print("\nCargando información de transporte de Singapur...")
+    analyzer = logic.load_services(analyzer, SERVICE_FILE)
+    v = logic.total_stops(analyzer)
+    e = logic.total_connections(analyzer)
+    print(f"Número de vértices (paradas): {v}")
+    print(f"Número de arcos   (conexiones): {e}")
+    return analyzer
+
+
+def option_three(analyzer):
+    print("\nCalculando componentes conectados...")
+    n_comp = logic.connected_components(analyzer)
+    print(f"Número de componentes conectados: {n_comp}")
+
+
+def option_four(analyzer):
+    station = input("Ingrese código de la estación base (formato STOPID-SERVICE): ")
+    ok = logic.set_station(analyzer, station)
+    if ok:
+        print(f"Estación base establecida en '{station}'.")
+    else:
+        print(f"No existe la estación '{station}' en el grafo.")
+
+
+def option_five(analyzer):
+    dest = input("Ingrese código de la estación destino: ")
+    has = logic.has_path_to(analyzer, dest)
+    print(f"¿Hay camino de '{analyzer.get('base_station')}' a '{dest}'? {'Sí' if has else 'No'}")
+
+
+def option_six(analyzer):
+    dest = input("Ingrese código de la estación destino: ")
+    path = logic.path_to(analyzer, dest)
+    if path:
+        # Supongo que path es una pila; extraigo y muestro de base a destino
+        ruta = []
+        while not path.is_empty():
+            ruta.append(path.pop())
+        print("Ruta de costo mínimo:", " → ".join(reversed(ruta)))
+        costo = logic.dist_to(analyzer, dest)
+        print(f"Costo total: {costo}")
+    else:
+        print("No existe ruta.")
+
+
+def option_seven(analyzer):
+    station, count = logic.station_with_most_routes(analyzer)
+    print(f"Estación que sirve a más rutas: {station} ({count} rutas)")
+
+
+def option_eight(analyzer):
+    dest = input("Ingrese código de la estación destino: ")
+    has = logic.has_path_bfs(analyzer, dest)
+    print(f"¿Existe un camino BFS de '{analyzer.get('base_station')}' a '{dest}'? {'Sí' if has else 'No'}")
+
+
+def option_nine(analyzer):
+    dest = input("Ingrese código de la estación destino: ")
+    path = logic.path_bfs(analyzer, dest)
+    if path:
+        ruta = []
+        while not path.is_empty():
+            ruta.append(path.pop())
+        print("Ruta BFS:", " → ".join(reversed(ruta)))
+    else:
+        print("No existe ruta.")
 
 
 def main():
-    working = True
-    while working:
+    analyzer = None
+    while True:
         print_menu()
-        inputs = input('Seleccione una opción para continuar\n>')
+        choice = input("> ").strip()
 
-        if int(inputs[0]) == 1:
-            print("\nInicializando....")
-            # cont es el controlador que se usará de acá en adelante
-            cont = logic.init()
+        if choice == '1':
+            analyzer = option_one()
 
-        elif int(inputs[0]) == 2:
-            option_two(cont)
-        else:
-            working = False
+        elif choice == '2':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                analyzer = option_two(analyzer)
+
+        elif choice == '3':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                option_three(analyzer)
+
+        elif choice == '4':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                option_four(analyzer)
+
+        elif choice == '5':
+            if analyzer is None or analyzer.get('dijkstra_search') is None:
+                print("Primero establezca la estación base (opción 4).")
+            else:
+                option_five(analyzer)
+
+        elif choice == '6':
+            if analyzer is None or analyzer.get('dijkstra_search') is None:
+                print("Primero establezca la estación base (opción 4).")
+            else:
+                option_six(analyzer)
+
+        elif choice == '7':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                option_seven(analyzer)
+
+        elif choice == '8':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                option_eight(analyzer)
+
+        elif choice == '9':
+            if analyzer is None:
+                print("Primero inicialice el analizador (opción 1).")
+            else:
+                option_nine(analyzer)
+
+        elif choice == '0':
             print("Saliendo...")
-    sys.exit(0)
+            sys.exit(0)
+
+        else:
+            print("Opción no válida, intente de nuevo.")
 
 
 if __name__ == "__main__":
-    threading.stack_size(67108864)  # 64MB stack
+    # Aumentar stack y recursión para DFS si hace falta
+    threading.stack_size(67108864)
     sys.setrecursionlimit(2 ** 20)
-    thread = threading.Thread(target=main)
-    thread.start()
+    main()

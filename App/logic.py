@@ -28,260 +28,226 @@
 #  Importaciones
 # ___________________________________________________
 
+import csv
+import time
+import os
+
 from DataStructures.Graph import edge as ed
 from DataStructures.Graph import vertex as vt
-from DataStructures.Graph import diagraph as G
-from DataStructures.Graph import bfs as bfs
-from DataStructures.Graph import dfs as dfs
+from DataStructures.Graph import digraph as G
+from DataStructures.Graph import bfs as gbfs
+from DataStructures.Graph import dfs as gdfs
 from DataStructures.Graph import prim as prim
-from DataStructures.Graph import dijsktra as dk
+from DataStructures.Graph import dijkstra as dk
 
-
-
-
-
-from DataStructures.List import array_list as al
-from DataStructures.List import list_iterator as li
-from DataStructures.List import list_node as ld
 from DataStructures.List import single_linked_list as lt
 
 from DataStructures.Map import map_entry as me
 from DataStructures.Map import map_funtions as mf
 from DataStructures.Map import map_linear_probing as m
-from DataStructures.Map import map_separate_chaining as msc
 
-from DataStructures.Priority_queue import index_pq_entry as ipe
 from DataStructures.Priority_queue import priority_queue as pq
-
 from DataStructures.Queue import queue as q
-
 from DataStructures.Stack import stack as s
 
-from DataStructures.Tree import bst_node as bn
-from DataStructures.Tree import rbt_node as rb
-from DataStructures.Tree import red_black_tree as rbt
-
-
-import csv
-import time
-import os
-
-data_dir = os.path.dirname(os.path.realpath('__file__')) + '/Data/'
-
-
-"""
-El controlador se encarga de mediar entre la vista y el modelo.
-Existen algunas operaciones en las que se necesita invocar
-el modelo varias veces o integrar varias de las respuestas
-del modelo en una sola respuesta.  Esta responsabilidad
-recae sobre el controlador.
-"""
-
-# ___________________________________________________
-#  Inicializacion del catalogo
-# ___________________________________________________
-
+# ---------------------------------------------------
+#  Inicialización del analizador
+# ---------------------------------------------------
 
 def init():
-    """
-    Llama la funcion de inicializacion  del modelo.
-    """
-    # analyzer es utilizado para interactuar con el modelo
-    analyzer = new_analyzer()
-    return analyzer
+    """Crea y retorna el analizador vacío"""
+    return new_analyzer()
 
 
 def new_analyzer():
-    """ Inicializa el analizador
-
-   stops: Tabla de hash para guardar los vertices del grafo
-   connections: Grafo para representar las rutas entre estaciones
-   components: Almacena la informacion de los componentes conectados
-   paths: Estructura que almancena los caminos de costo minimo desde un
-           vertice determinado a todos los otros vértices del grafo
-    """
-    try:
-        analyzer = {
-            'stops': None,
-            'connections': None,
-            'components': None,
-            'paths': None
-        }
-
-        analyzer['stops'] = m.new_map(
-            num_elements=14000, load_factor=0.7, prime=109345121)
-
-        analyzer['connections'] = G.new_graph(size=14000)
-        return analyzer
-    except Exception as exp:
-        return exp
-
-# ___________________________________________________
-#  Funciones para la carga de datos y almacenamiento
-#  de datos en los modelos
-# ___________________________________________________
-
-
-def load_services(analyzer, servicesfile):
-    """
-    Carga los datos de los archivos CSV en el modelo.
-    Se crea un arco entre cada par de estaciones que
-    pertenecen al mismo servicio y van en el mismo sentido.
-
-    addRouteConnection crea conexiones entre diferentes rutas
-    servidas en una misma estación.
-    """
-    servicesfile = data_dir + servicesfile
-    input_file = csv.DictReader(open(servicesfile, encoding="utf-8"),
-                                delimiter=",")
-    lastservice = None
-    for service in input_file:
-        if lastservice is not None:
-            sameservice = lastservice['ServiceNo'] == service['ServiceNo']
-            samedirection = lastservice['Direction'] == service['Direction']
-            samebusStop = lastservice['BusStopCode'] == service['BusStopCode']
-            if sameservice and samedirection and not samebusStop:
-                add_stop_connection(analyzer, lastservice, service)
-        lastservice = service
-
+    """Inicializa estructuras de datos principales"""
+    analyzer = {
+        'stops': None,
+        'connections': None,
+        'dijkstra_search': None,
+        'bfs_search': None,
+        'base_station': None
+    }
+    # Tabla hash para rutas por estación
+    analyzer['stops'] = m.new_map(num_elements=14000, load_factor=0.7, prime=109345121)
+    # Grafo dirigido para conexiones de paradas
+    analyzer['connections'] = G.new_graph(14000)
     return analyzer
 
+# ---------------------------------------------------
+#  Carga de datos
+# ---------------------------------------------------
+
+def load_services(analyzer, servicesfile):
+    """Carga CSV y agrega conexiones de paradas consecutivas."""
+    base_dir = os.path.dirname(__file__)
+    project_root = os.path.normpath(os.path.join(base_dir, '..'))
+    data_dir = os.path.join(project_root, 'Data')
+    full_path = os.path.join(data_dir, servicesfile)
+
+    with open(full_path, encoding='utf-8') as f:
+        reader = csv.DictReader(f, delimiter=',')
+        last = None
+        for service in reader:
+            if last and last['ServiceNo']==service['ServiceNo'] \
+                   and last['Direction']==service['Direction'] \
+                   and last['BusStopCode']!=service['BusStopCode']:
+                add_stop_connection(analyzer, last, service)
+            last = service
+    return analyzer
+
+# ---------------------------------------------------
+#  Establecer estación base
+# ---------------------------------------------------
 
 def set_station(analyzer, station):
-    """
-    Establece la estación base para la consulta de caminos
-    """
+    """Configura estación base y ejecuta Dijkstra y BFS."""
     try:
         station = str(station)
-        vertex = G.get_vertex(analyzer['connections'], station)
-        if vertex is not None:
-            dijkstra_search = dk.dijkstra(analyzer['connections'], station)
-            analyzer['dijkstra_search'] = dijkstra_search
-            return True
-        else:
+        # validación de existencia
+        if not G.contains_vertex(analyzer['connections'], station):
             return False
-    except Exception as exp:
-        return exp
-# ___________________________________________________
-#  Funciones para consultas
-# ___________________________________________________
+        # Dijkstra para rutas de costo mínimo
+        analyzer['dijkstra_search'] = dk.dijkstra(analyzer['connections'], station)
+        # BFS para rutas de búsqueda
+        analyzer['bfs_search'] = gbfs.bfs(analyzer['connections'], station)
+        analyzer['base_station'] = station
+        return True
+    except Exception as e:
+        return e
 
+# ---------------------------------------------------
+#  Consultas básicas
+# ---------------------------------------------------
 
 def total_stops(analyzer):
-    """
-    Total de paradas de autobus
-    """
+    """Número de vértices (paraderos)."""
     return G.order(analyzer['connections'])
 
 
 def total_connections(analyzer):
-    """
-    Total de enlaces entre las paradas
-    """
+    """Número de arcos (conexiones)."""
     return G.size(analyzer['connections'])
 
+# ---------------------------------------------------
+#  Componentes conectados
+# ---------------------------------------------------
 
-# Funciones para la medición de tiempos
-
-def get_time():
-    """
-    devuelve el instante tiempo de procesamiento en milisegundos
-    """
-    return float(time.perf_counter()*1000)
-
-
-def delta_time(end, start):
-    """
-    devuelve la diferencia entre tiempos de procesamiento muestreados
-    """
-    elapsed = float(end - start)
-    return elapsed
+def connected_components(analyzer):
+    """Cuenta cuántos componentes en el grafo (trata dirigido como no dirigido)."""
+    visited = mf.new_map(G.order(analyzer['connections']))
+    count = 0
+    for u in mf.key_set(analyzer['connections']['vertices']):
+        if not mf.contains_key(visited, u):
+            count += 1
+            _dfs_mark(analyzer['connections'], u, visited)
+    return count
 
 
-# Funciones para agregar informacion al grafo
+def _dfs_mark(graph, u, visited):
+    mf.put(visited, u, True)
+    # visitar vecinos salientes
+    for v in G.adjacents(graph, u).elements:
+        if not mf.contains_key(visited, v):
+            _dfs_mark(graph, v, visited)
+    # visitar vecinos entrantes
+    for w in mf.key_set(graph['vertices']):
+        if G.get_edge(graph, w, u) is not None and not mf.contains_key(visited, w):
+            _dfs_mark(graph, w, visited)
 
-def add_stop_connection(analyzer, lastservice, service):
-    """
-    Adiciona las estaciones al grafo como vertices y arcos entre las
-    estaciones adyacentes.
+# ---------------------------------------------------
+#  Rutas y caminos
+# ---------------------------------------------------
 
-    Los vertices tienen por nombre el identificador de la estacion
-    seguido de la ruta que sirve.  Por ejemplo:
+def has_path_to(analyzer, dest):
+    """¿Existe un camino de mínima distancia a dest?"""
+    return dk.has_path_to(dest, analyzer['dijkstra_search'])
 
-    75009-10
 
-    Si la estacion sirve otra ruta, se tiene: 75009-101
-    """
-    try:
-        origin = format_vertex(lastservice)
-        destination = format_vertex(service)
-        clean_service_distance(lastservice, service)
-        distance = float(service['Distance']) - float(lastservice['Distance'])
-        distance = abs(distance)
-        add_stop(analyzer, origin)
-        add_stop(analyzer, destination)
-        add_connection(analyzer, origin, destination, distance)
-        add_route_stop(analyzer, service)
-        add_route_stop(analyzer, lastservice)
-        return analyzer
-    except Exception as exp:
-        return exp
+def path_to(analyzer, dest):
+    """Stack con ruta de mínima distancia a dest."""
+    return dk.path_to(dest, analyzer['dijkstra_search'])
+
+
+def dist_to(analyzer, dest):
+    """Costo de mínima distancia a dest."""
+    return dk.dist_to(dest, analyzer['dijkstra_search'])
+
+
+def has_path_bfs(analyzer, dest):
+    """¿Existe un camino BFS a dest?"""
+    return gbfs.has_path_to_bfs(analyzer['bfs_search'], dest)
+
+
+def path_bfs(analyzer, dest):
+    """Stack con ruta BFS a dest."""
+    return gbfs.path_to_bfs(analyzer['bfs_search'], dest)
+
+# ---------------------------------------------------
+#  Estación con más rutas
+# ---------------------------------------------------
+
+def station_with_most_routes(analyzer):
+    """Retorna (estación, número de rutas) con más rutas."""
+    max_stop, max_count = None, 0
+    for stop in mf.key_set(analyzer['stops']):
+        routes = mf.get(analyzer['stops'], stop)
+        # si usas list_node, extrae value
+        count = len(routes.elements) if hasattr(routes, 'elements') else routes.size
+        if count > max_count:
+            max_stop, max_count = stop, count
+    return max_stop, max_count
+
+# ---------------------------------------------------
+#  Helpers de grafo
+# ---------------------------------------------------
+
+def add_stop_connection(analyzer, prev_s, curr_s):
+    o = format_vertex(prev_s)
+    d = format_vertex(curr_s)
+    clean_distance(prev_s, curr_s)
+    dist = abs(float(curr_s['Distance']) - float(prev_s['Distance']))
+    add_stop(analyzer, o)
+    add_stop(analyzer, d)
+    G.add_edge(analyzer['connections'], o, d, dist)
+    add_route_stop(analyzer, curr_s)
+    add_route_stop(analyzer, prev_s)
+    return analyzer
 
 
 def add_stop(analyzer, stopid):
-    """
-    Adiciona una estación como un vertice del grafo
-    """
-
-    G.insert_vertex(analyzer['connections'], stopid, stopid)
+    if not G.contains_vertex(analyzer['connections'], stopid):
+        G.insert_vertex(analyzer['connections'], stopid, stopid)
     return analyzer
 
 
 def add_route_stop(analyzer, service):
-    """
-    Agrega a una estacion, una ruta que es servida en ese paradero
-    """
-    lstroutes = m.get(analyzer['stops'], service['BusStopCode'])
-    if lstroutes is None:
-        lstroutes = lt.new_list()
-        lt.add_last(lstroutes, service['ServiceNo'])
-        m.put(analyzer['stops'], service['BusStopCode'], lstroutes)
+    code = service['BusStopCode']
+    routes = mf.get(analyzer['stops'], code)
+    if routes is None:
+        lst = lt.new_list()
+        lt.add_last(lst, service['ServiceNo'])
+        mf.put(analyzer['stops'], code, lst)
     else:
-        lstroutes = lstroutes['value']
-        info = service['ServiceNo']
-        if not lt.is_present(lstroutes, info):
-            lt.add_last(lstroutes, info)
+        # rutas en single_linked_list: extraer con .elements o iterador
+        lst = routes
+        if not lt.is_present(lst, service['ServiceNo']):
+            lt.add_last(lst, service['ServiceNo'])
     return analyzer
 
 
-def add_connection(analyzer, origin, destination, distance):
-    """
-    Adiciona un arco entre dos estaciones
-    """
-
-    G.add_edge(analyzer['connections'], origin, destination, distance)
-
-
-# ==============================
-# Funciones Helper
-# ==============================
-
-def clean_service_distance(lastservice, service):
-    """
-    En caso de que el archivo tenga un espacio en la
-    distancia, se reemplaza con cero.
-    """
-    if service['Distance'] == '':
-        service['Distance'] = 0
-    if lastservice['Distance'] == '':
-        lastservice['Distance'] = 0
+def clean_distance(s1, s2):
+    if s1['Distance']=='': s1['Distance']='0'
+    if s2['Distance']=='': s2['Distance']='0'
 
 
 def format_vertex(service):
-    """
-    Se formatea el nombrer del vertice con el id de la estación
-    seguido de la ruta.
-    """
-    name = service['BusStopCode'] + '-'
-    name = name + service['ServiceNo']
-    return name
+    return f"{service['BusStopCode']}-{service['ServiceNo']}"
+
+# ---------------------------------------------------
+#  Medición de tiempos
+# ---------------------------------------------------
+
+def get_time():      return float(time.perf_counter()*1000)
+
+def delta_time(e, s): return float(e - s)
