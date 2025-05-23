@@ -26,7 +26,7 @@ from DataStructures.Tree import red_black_tree as rbt
 
 def new_graph(order):
     return {
-        'vertices': mlp.new_map(order),
+        'vertices': mlp.new_map(order, 0.7),
         'num_edges': 0
     }
 
@@ -54,7 +54,7 @@ def remove_vertex(my_graph, key_u):
     my_graph['num_edges'] -= removed_out
     for u_key in mf.key_set(my_graph['vertices']):
         v = mf.get(my_graph['vertices'], u_key)
-        if mf.contains_key(v.adjacents, key_u):
+        if mf.contains(v.adjacents, key_u):
             mf.remove(v.adjacents, key_u)
             my_graph['num_edges'] -= 1
     mf.remove(my_graph['vertices'], key_u)
@@ -68,7 +68,7 @@ def add_edge(my_graph, key_u, key_v, weight=1.0):
     v_v = mf.get(my_graph['vertices'], key_v)
     if v_v is None:
         raise Exception("El vertice v no existe")
-    had = mf.contains_key(v_u.adjacents, key_v)
+    had = mf.contains(v_u.adjacents, key_v)
     edge = ed.new_edge(key_v, weight)
     mf.put(v_u.adjacents, key_v, edge)
     if not had:
@@ -113,7 +113,7 @@ def get_vertex_information(my_graph, key_u):
 
 
 def contains_vertex(my_graph, key_u):
-    return mf.contains_key(my_graph['vertices'], key_u)
+    return mf.contains(my_graph['vertices'], key_u)
 
 
 def adjacents(my_graph, key_u):

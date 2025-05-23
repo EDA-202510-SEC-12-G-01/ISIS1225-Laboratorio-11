@@ -34,7 +34,7 @@ import os
 
 from DataStructures.Graph import edge as ed
 from DataStructures.Graph import vertex as vt
-from DataStructures.Graph import digraph as G
+from DataStructures.Graph import diagraph as G
 from DataStructures.Graph import bfs as gbfs
 from DataStructures.Graph import dfs as gdfs
 from DataStructures.Graph import prim as prim
