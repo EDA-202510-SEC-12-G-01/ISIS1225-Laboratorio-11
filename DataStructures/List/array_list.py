@@ -12,14 +12,14 @@ def size(my_list):
     return my_list['size']
 
 def add_first(my_list, element):
-    my_list['elements'].append(element)
+    my_list['elements'].insert(0, element)
     my_list['size'] += 1
     return my_list
 
 def first_element(my_list):
     if my_list['size'] == 0:
         raise IndexError("list index out of range")
-    return my_list['elements'][-1]
+    return my_list['elements'][0]
 
 def get_element(my_list, pos):
     if pos < 0 or pos >= my_list['size']:
@@ -27,9 +27,9 @@ def get_element(my_list, pos):
     return my_list['elements'][pos]
 
 def delete_element(my_list, pos):
-    if my_list['size'] == 0:
+    if pos < 0 or pos >= my_list['size']:
         raise IndexError("list index out of range")
-    element = my_list['elements'].pop(0)
+    element = my_list['elements'].pop(pos)
     my_list['size'] -= 1
     return element
 
@@ -158,10 +158,6 @@ def merge_sort(lst, sort_crit):
 
 def quick_sort(lst, sort_crit):
     def partition(lo, hi):
-        """
-        Reorganiza los elementos entre los índices lo y hi usando el elemento en hi como pivot.
-        Devuelve la posición final del pivot.
-        """
         follower = lo
         pivot = get_element(lst, hi)
         for leader in range(lo, hi):
@@ -179,3 +175,20 @@ def quick_sort(lst, sort_crit):
     if n > 0:
         quicksort(0, n - 1)
     return lst
+
+def add_last(my_list, element):
+    my_list['elements'].append(element)
+    my_list['size'] += 1
+    return my_list
+
+def last_element(my_list):
+    if my_list['size'] == 0:
+        raise IndexError("list index out of range")
+    return my_list['elements'][-1]
+
+def remove_first(my_list):
+    if my_list['size'] == 0:
+        raise IndexError("list index out of range")
+    element = my_list['elements'].pop(0)
+    my_list['size'] -= 1
+    return element
