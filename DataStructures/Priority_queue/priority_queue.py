@@ -87,4 +87,3 @@ def remove(my_heap):
         elements[0] = last_element
         sink(my_heap, 1)
     return max_priority_element['value']
-

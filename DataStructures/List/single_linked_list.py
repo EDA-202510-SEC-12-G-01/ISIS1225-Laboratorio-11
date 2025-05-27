@@ -260,10 +260,6 @@ def merge_sort(lst, sort_crit):
 
 def quick_sort(lst, sort_crit):
     def partition(lo, hi):
-        """
-        Reorganiza los elementos entre los índices lo y hi usando el elemento en hi como pivot.
-        Devuelve la posición final del pivot.
-        """
         follower = lo
         pivot = get_element(lst, hi)
         for leader in range(lo, hi):
